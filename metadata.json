@@ -1,0 +1,6 @@
+{
+  "name": "Atharv Kamath Hub",
+  "description": "Premium personal digital hub, portfolio, and creative content center for Atharv Kamath — featuring videos, blogs, downloads, and an interactive admin control panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

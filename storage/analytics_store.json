@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "config": {
+    "launchMode": "development",
+    "launchedAt": null,
+    "showPublicVisitors": false,
+    "updatedAt": "2026-11-17T14:33:00.000Z"
+  },
+  "production": {
+    "daily": {},
+    "sessions": {},
+    "visitorLastSeen": {}
+  },
+  "preview": {
+    "daily": {},
+    "sessions": {},
+    "visitorLastSeen": {}
+  }
+}

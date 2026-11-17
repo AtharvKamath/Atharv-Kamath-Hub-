@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e0ebf5" />
+      <stop offset="100%" stop-color="#f5f7fa" />
+    </linearGradient>
+    <linearGradient id="sandGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#dfd5c6" />
+      <stop offset="100%" stop-color="#d0c4b3" />
+    </linearGradient>
+    <linearGradient id="boatGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a9d47" />
+      <stop offset="100%" stop-color="#1b7230" />
+    </linearGradient>
+    <linearGradient id="boatBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0e51a7" />
+      <stop offset="100%" stop-color="#073066" />
+    </linearGradient>
+    <linearGradient id="skin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b88365" />
+      <stop offset="100%" stop-color="#915a3c" />
+    </linearGradient>
+    <linearGradient id="glass" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#555544" />
+      <stop offset="100%" stop-color="#222211" />
+    </linearGradient>
+  </defs>
+
+  <!-- Sky background -->
+  <rect width="400" height="400" fill="url(#skyGrad)" />
+
+  <!-- Distant horizon / sea line -->
+  <path d="M 0 250 Q 200 245 400 250 L 400 270 L 0 270 Z" fill="#9dbcd4" opacity="0.5" />
+
+  <!-- Beach sand -->
+  <path d="M 0 260 Q 200 255 400 260 L 400 400 L 0 400 Z" fill="url(#sandGrad)" />
+
+  <!-- BOAT (Background Layer) -->
+  <!-- Blue hull bottom -->
+  <path d="M -50 380 C 50 380, 150 360, 250 150 C 150 300, 50 350, -50 360 Z" fill="url(#boatBlue)" />
+  <!-- Green boat body -->
+  <path d="M -50 100 Q 150 150 250 150 C 150 300, 50 350, -50 360 C -100 250, -100 150, -50 100 Z" fill="url(#boatGreen)" />
+
+  <!-- Boat green stripes (darker green lines) -->
+  <path d="M -50 140 Q 100 180 230 190" fill="none" stroke="#124a1f" stroke-width="6" />
+  <path d="M -50 170 Q 100 210 210 225" fill="none" stroke="#124a1f" stroke-width="6" />
+  <path d="M -50 200 Q 100 240 190 260" fill="none" stroke="#124a1f" stroke-width="6" />
+  <path d="M -50 230 Q 100 270 170 295" fill="none" stroke="#124a1f" stroke-width="6" />
+
+  <!-- Eye painted on the boat -->
+  <g transform="translate(195, 175) rotate(15)">
+    <!-- Eye white -->
+    <path d="M -15 0 C -5 -8, 5 -8, 15 0 C 5 8, -5 8, -15 0 Z" fill="white" stroke="#124a1f" stroke-width="1.5" />
+    <!-- Pupil -->
+    <circle cx="0" cy="0" r="4.5" fill="black" />
+    <!-- Eyelash / Brow line -->
+    <path d="M -18 -3 Q 0 -12 18 -3" fill="none" stroke="black" stroke-width="2" />
+  </g>
+
+  <!-- Text "ST.ANTONY" on boat -->
+  <text x="65" y="275" fill="white" font-family="'Inter', sans-serif" font-weight="900" font-size="28" transform="rotate(-15, 65, 275)" letter-spacing="1">ST.ANTONY</text>
+
+  <!-- Distant boat -->
+  <path d="M 280 248 L 310 248 L 305 240 Z" fill="white" opacity="0.8" />
+  <path d="M 295 248 L 295 235 L 303 240 Z" fill="#994444" opacity="0.8" />
+
+  <!-- MAN (Foreground Layer) -->
+  <g transform="translate(180, 160)">
+    <!-- Neck -->
+    <path d="M -12 10 L 0 45 L 20 45 L 8 10 Z" fill="#825234" />
+
+    <!-- Face -->
+    <path d="M -22 -35 C -22 -15, -15 15, 10 12 C 22 10, 22 -10, 20 -25 C 18 -40, -5 -45, -22 -35 Z" fill="url(#skin)" />
+    
+    <!-- Ear -->
+    <circle cx="-16" cy="-14" r="6.5" fill="#915a3c" />
+    <path d="M -16 -16 C -14 -16, -14 -12, -16 -12" fill="none" stroke="#663c24" stroke-width="1.5" />
+
+    <!-- Nose -->
+    <path d="M 18 -15 L 24 -10 L 16 -5" fill="url(#skin)" stroke="#825234" stroke-width="0.5" />
+
+    <!-- Lips -->
+    <path d="M 10 2 Q 15 5 13 0" fill="none" stroke="#6e3c23" stroke-width="2" />
+
+    <!-- Beard/Stubble shadow -->
+    <path d="M -22 -15 C -22 10, -10 14, 5 12 C 14 11, 14 5, 10 0 C 5 -5, -10 -5, -22 -15 Z" fill="#4d362d" opacity="0.25" />
+
+    <!-- Curly Black Hair -->
+    <path d="M -24 -34 C -24 -55, 12 -58, 22 -38 C 24 -34, 20 -38, 16 -38 C 10 -40, 0 -38, -10 -36 C -18 -34, -22 -30, -24 -34 Z" fill="#151518" />
+    <!-- Hair curls details -->
+    <circle cx="-16" cy="-44" r="6" fill="#151518" />
+    <circle cx="-8" cy="-48" r="7" fill="#151518" />
+    <circle cx="2" cy="-48" r="7.5" fill="#151518" />
+    <circle cx="12" cy="-45" r="7" fill="#151518" />
+    <circle cx="18" cy="-38" r="6" fill="#151518" />
+    <circle cx="-22" cy="-38" r="5" fill="#151518" />
+    <!-- Hair details / curls highlights -->
+    <path d="M -12 -46 Q -8 -44 -4 -46" fill="none" stroke="#33333c" stroke-width="1.5" />
+    <path d="M 0 -46 Q 4 -43 8 -45" fill="none" stroke="#33333c" stroke-width="1.5" />
+
+    <!-- Eyebrow -->
+    <path d="M 0 -22 Q 10 -25 15 -21" fill="none" stroke="#151518" stroke-width="2.5" />
+
+    <!-- Round Sunglasses -->
+    <!-- Frame -->
+    <circle cx="10" cy="-12" r="13" fill="none" stroke="#dfb76c" stroke-width="2.5" />
+    <circle cx="10" cy="-12" r="11.5" fill="url(#glass)" />
+    <!-- Reflection reflection -->
+    <path d="M 2 -18 L 12 -8" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+    <path d="M 12 -12 L 14 -10" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.4" />
+
+    <!-- Bridge / Temple -->
+    <path d="M -3 -12 L -1 -12" fill="none" stroke="#dfb76c" stroke-width="2.5" />
+    <path d="M -10 -13 L -16 -12" fill="none" stroke="#dfb76c" stroke-width="2" />
+
+    <!-- Short beard details -->
+    <path d="M -4 11 Q 4 12 10 6" fill="none" stroke="#2a1e1a" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Torso / Grid Pattern Shirt -->
+    <path d="M -45 50 C -45 50, -40 35, -20 32 C -5 30, 20 35, 30 50 C 40 65, 45 100, 45 240 L -55 240 C -55 130, -50 65, -45 50 Z" fill="#1d2e4f" />
+    
+    <!-- Grid/plaid lines overlay -->
+    <!-- Vertical lines -->
+    <path d="M -35 45 L -35 240" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M -20 32 L -20 240" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M -5 30 L -5 240" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M 10 32 L 10 240" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M 25 45 L 25 240" fill="none" stroke="#3a517a" stroke-width="4" />
+
+    <!-- Thin white vertical grids -->
+    <path d="M -27 35 L -27 240" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+    <path d="M -12 31 L -12 240" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+    <path d="M 2 31 L 2 240" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+    <path d="M 17 35 L 17 240" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+
+    <!-- Horizontal lines -->
+    <path d="M -45 60 C -15 55, 15 55, 35 60" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M -48 90 C -15 85, 15 85, 38 90" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M -50 120 C -15 115, 15 115, 40 120" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M -52 150 C -15 145, 15 145, 42 150" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M -54 180 C -15 175, 15 175, 44 180" fill="none" stroke="#3a517a" stroke-width="4" />
+    <path d="M -55 210 Q -5 205, 45 210" fill="none" stroke="#3a517a" stroke-width="4" />
+
+    <!-- Thin white horizontal grids -->
+    <path d="M -47 75 C -15 70, 15 70, 37 75" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+    <path d="M -49 105 C -15 100, 15 100, 39 105" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+    <path d="M -51 135 C -15 130, 15 130, 41 135" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+    <path d="M -53 165 C -15 160, 15 160, 43 165" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+    <path d="M -54 195 Q -5 190, 44 195" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+
+    <!-- Collar -->
+    <path d="M -20 32 L -5 45 L -10 32 Z" fill="#13213a" stroke="#3a517a" stroke-width="1" />
+    <path d="M 10 32 L -5 45 L 0 32 Z" fill="#13213a" stroke="#3a517a" stroke-width="1" />
+  </g>
+</svg>

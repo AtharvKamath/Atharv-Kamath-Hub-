@@ -1,0 +1,225 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrator or owner account with RBAC role and granular permissions.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "role": { "type": "string", "enum": ["owner", "full_admin", "limited_admin"] },
+        "status": { "type": "string", "enum": ["active", "suspended", "revoked"] },
+        "permissions": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "approvedAt": { "type": "string", "format": "date-time" },
+        "approvedBy": { "type": "string", "maxLength": 200 },
+        "lastLoginAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "role", "status", "permissions", "createdAt"]
+    },
+    "AdminRequest": {
+      "title": "AdminRequest",
+      "description": "Verified administrator access request awaiting Owner review.",
+      "type": "object",
+      "properties": {
+        "requestId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "verified": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "expired"] },
+        "requestedRole": { "type": "string", "enum": ["full_admin", "limited_admin"] },
+        "assignedRole": { "type": "string", "enum": ["full_admin", "limited_admin"] },
+        "assignedPermissions": { "type": "object" },
+        "requestedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "reviewedBy": { "type": "string", "maxLength": 200 },
+        "rejectionReason": { "type": "string", "maxLength": 500 },
+        "notificationStatus": { "type": "string", "enum": ["pending", "sent", "queued_retry", "failed"] }
+      },
+      "required": ["requestId", "uid", "name", "email", "verified", "status", "requestedRole", "requestedAt", "expiresAt"]
+    },
+    "OwnerConfig": {
+      "title": "OwnerConfig",
+      "description": "Immutable anchor binding the Website Owner role to a single verified Firebase UID.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerEmail": { "type": "string", "format": "email", "maxLength": 200 },
+        "role": { "type": "string", "enum": ["owner"] },
+        "locked": { "type": "boolean" },
+        "provisionedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "ownerEmail", "role", "locked", "provisionedAt", "updatedAt"]
+    },
+    "AdminConfig": {
+      "title": "AdminConfig",
+      "description": "Global administrator workflow settings configured by Owner.",
+      "type": "object",
+      "properties": {
+        "reviewPeriod": { "type": "string", "enum": ["24h", "3d", "7d"] },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["reviewPeriod", "updatedAt"]
+    },
+    "UploadedGame": {
+      "title": "UploadedGame",
+      "description": "Game metadata and security scan status for Gaming Zone downloads.",
+      "type": "object",
+      "properties": {
+        "gameId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 5000 },
+        "category": { "type": "string", "maxLength": 80 },
+        "version": { "type": "string", "maxLength": 40 },
+        "developer": { "type": "string", "maxLength": 120 },
+        "releaseDate": { "type": "string", "maxLength": 40 },
+        "coverImage": { "type": "string", "maxLength": 2000 },
+        "screenshots": { "type": "array" },
+        "filePath": { "type": "string", "maxLength": 500 },
+        "downloadFileName": { "type": "string", "maxLength": 200 },
+        "fileSize": { "type": "number" },
+        "fileSizeFormatted": { "type": "string", "maxLength": 40 },
+        "fileType": { "type": "string", "maxLength": 20 },
+        "fileVersion": { "type": "string", "maxLength": 40 },
+        "externalDownloadUrl": { "type": "string", "maxLength": 2000 },
+        "sha256": { "type": "string", "maxLength": 128 },
+        "storageProvider": { "type": "string", "enum": ["firebase_storage", "server_vault", "external_only"] },
+        "requirements": { "type": "object" },
+        "genre": { "type": "string", "maxLength": 80 },
+        "playerMode": { "type": "string", "enum": ["Single Player", "Multiplayer", "Both"] },
+        "connectivity": { "type": "string", "enum": ["Offline", "Online", "Both"] },
+        "ageRating": { "type": "string", "maxLength": 30 },
+        "installationInstructions": { "type": "string", "maxLength": 4000 },
+        "additionalNotes": { "type": "string", "maxLength": 2000 },
+        "downloadCount": { "type": "number" },
+        "uploadStatus": { "type": "string", "enum": ["uploading", "scanning", "completed", "failed"] },
+        "securityScanStatus": { "type": "string", "enum": ["pending", "quarantined", "passed", "failed"] },
+        "securityScanDetails": { "type": "string", "maxLength": 500 },
+        "publicationStatus": { "type": "string", "enum": ["draft", "published", "unpublished"] },
+        "uploadedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["gameId", "title", "description", "filePath", "fileSize", "fileType", "uploadStatus", "securityScanStatus", "publicationStatus", "uploadedBy", "createdAt", "updatedAt"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "Visitor Direct Inquiry submission with server-side email delivery tracking.",
+      "type": "object",
+      "properties": {
+        "inquiryId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "category": { "type": "string", "enum": ["General Inquiry", "Business Collaboration", "Project Discussion", "Technical Support", "Other"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 5000 },
+        "status": { "type": "string", "enum": ["unread", "read", "replied"] },
+        "notificationStatus": { "type": "string", "enum": ["pending", "sent", "queued_retry", "failed"] },
+        "notificationError": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["inquiryId", "name", "email", "subject", "category", "message", "status", "notificationStatus", "createdAt"]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Immutable security and administration audit trail.",
+      "type": "object",
+      "properties": {
+        "logId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 200 },
+        "action": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "targetId": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["logId", "actorUid", "action", "targetId", "details", "timestamp"]
+    },
+    "SiteContent": {
+      "title": "SiteContent",
+      "description": "Public portfolio section content synchronized by authorized admins.",
+      "type": "object",
+      "properties": {
+        "sectionId": { "type": "string", "enum": ["profile", "stats", "links", "photos", "projects", "videos", "downloads", "favorites", "blogs", "timeline", "arcadeGames"] },
+        "items": { "type": "array" },
+        "data": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["sectionId", "updatedAt", "updatedBy"]
+    },
+    "AnalyticsConfig": {
+      "title": "AnalyticsConfig",
+      "description": "Owner-controlled analytics launch state and public visibility preferences.",
+      "type": "object",
+      "properties": {
+        "launchMode": { "type": "string", "enum": ["development", "production_launched"] },
+        "launchedAt": { "type": "string", "maxLength": 64 },
+        "showPublicVisitors": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["launchMode", "showPublicVisitors", "updatedAt"]
+    },
+    "AnalyticsSummary": {
+      "title": "AnalyticsSummary",
+      "description": "Server-aggregated privacy-conscious analytics summaries separated by production vs preview scope.",
+      "type": "object",
+      "properties": {
+        "scope": { "type": "string", "enum": ["production", "preview"] },
+        "totalPageViews": { "type": "number" },
+        "uniqueVisitors": { "type": "number" },
+        "totalSessions": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["scope", "totalPageViews", "uniqueVisitors", "totalSessions", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/adminUsers/{uid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Administrator accounts and permission matrices."
+    },
+    "/adminRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/AdminRequest" },
+      "description": "Verified administrator registration and approval requests."
+    },
+    "/adminConfig/owner": {
+      "schema": { "$ref": "#/entities/OwnerConfig" },
+      "description": "Immutable Website Owner UID binding record."
+    },
+    "/adminConfig/{configId}": {
+      "schema": { "$ref": "#/entities/AdminConfig" },
+      "description": "Owner-configured review expiration and system settings."
+    },
+    "/games/{gameId}": {
+      "schema": { "$ref": "#/entities/UploadedGame" },
+      "description": "Uploaded Gaming Zone downloadable games and metadata."
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/Inquiry" },
+      "description": "Visitor Direct Inquiry submissions and email status."
+    },
+    "/adminAuditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AdminAuditLog" },
+      "description": "Immutable audit logs of administrative actions."
+    },
+    "/siteContent/{sectionId}": {
+      "schema": { "$ref": "#/entities/SiteContent" },
+      "description": "Synchronized public website content sections."
+    },
+    "/adminConfig/analytics": {
+      "schema": { "$ref": "#/entities/AnalyticsConfig" },
+      "description": "Owner-controlled analytics launch configuration."
+    },
+    "/analytics/{docId}": {
+      "schema": { "$ref": "#/entities/AnalyticsSummary" },
+      "description": "Aggregated website analytics restricted to verified admins and Owner."
+    }
+  }
+}

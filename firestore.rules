@@ -1,0 +1,532 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // === CORE HELPERS ===
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function ownerConfigPath() {
+      return /databases/$(database)/documents/adminConfig/owner;
+    }
+
+    function adminDocPath(uid) {
+      return /databases/$(database)/documents/adminUsers/$(uid);
+    }
+
+    // Explicitly configured Owner identity bound to immutable Owner UID (requires verified email claim)
+    function isOwner() {
+      return isVerifiedUser()
+        && request.auth.token.email.lower() == 'business.atharvk@gmail.com'
+        && (
+          (exists(ownerConfigPath())
+            && get(ownerConfigPath()).data.ownerUid == request.auth.uid
+            && get(ownerConfigPath()).data.ownerEmail == 'business.atharvk@gmail.com'
+            && get(ownerConfigPath()).data.role == 'owner'
+            && get(ownerConfigPath()).data.locked == true
+          )
+          ||
+          (!exists(ownerConfigPath())
+            && exists(adminDocPath(request.auth.uid))
+            && get(adminDocPath(request.auth.uid)).data.role == 'owner'
+            && get(adminDocPath(request.auth.uid)).data.status == 'active'
+          )
+        );
+    }
+
+    function isActiveAdmin() {
+      return isVerifiedUser()
+        && exists(adminDocPath(request.auth.uid))
+        && get(adminDocPath(request.auth.uid)).data.status == 'active';
+    }
+
+    function getAdminData() {
+      return get(adminDocPath(request.auth.uid)).data;
+    }
+
+    function hasSectionPerm(section, action) {
+      return isOwner() || (
+        isActiveAdmin() && (
+          getAdminData().role == 'full_admin' ||
+          (
+            section in getAdminData().permissions &&
+            action in getAdminData().permissions[section] &&
+            getAdminData().permissions[section][action] == true
+          )
+        )
+      );
+    }
+
+    function isValidEmailStr(val) {
+      return val is string && val.size() >= 3 && val.size() <= 200 && val.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+    }
+
+    function isValidNonEmptyStr(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    function isValidOptionalStr(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    // === VALIDATION BLUEPRINTS ===
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role', 'status', 'permissions', 'createdAt'])
+        && data.keys().hasOnly([
+          'uid', 'name', 'email', 'role', 'status', 'permissions',
+          'createdAt', 'approvedAt', 'approvedBy', 'lastLoginAt'
+        ])
+        && isValidId(data.uid)
+        && isValidNonEmptyStr(data.name, 120)
+        && isValidEmailStr(data.email)
+        && data.role in ['owner', 'full_admin', 'limited_admin']
+        && data.status in ['active', 'suspended', 'revoked']
+        && data.permissions is map
+        && data.createdAt is timestamp
+        && (!('approvedAt' in data) || data.approvedAt is timestamp)
+        && (!('approvedBy' in data) || isValidOptionalStr(data.approvedBy, 200))
+        && (!('lastLoginAt' in data) || data.lastLoginAt is timestamp);
+    }
+
+    function isValidAdminRequest(data) {
+      return data.keys().hasAll([
+          'requestId', 'uid', 'name', 'email', 'verified', 'status',
+          'requestedRole', 'requestedAt', 'expiresAt'
+        ])
+        && data.keys().hasOnly([
+          'requestId', 'uid', 'name', 'email', 'verified', 'status',
+          'requestedRole', 'assignedRole', 'assignedPermissions',
+          'requestedAt', 'expiresAt', 'reviewedAt', 'reviewedBy',
+          'rejectionReason', 'notificationStatus'
+        ])
+        && isValidId(data.requestId)
+        && isValidId(data.uid)
+        && isValidNonEmptyStr(data.name, 120)
+        && isValidEmailStr(data.email)
+        && data.verified is bool
+        && data.status in ['pending', 'approved', 'rejected', 'expired']
+        && data.requestedRole in ['full_admin', 'limited_admin']
+        && (!('assignedRole' in data) || data.assignedRole in ['full_admin', 'limited_admin'])
+        && (!('assignedPermissions' in data) || data.assignedPermissions is map)
+        && data.requestedAt is timestamp
+        && data.expiresAt is timestamp
+        && (!('reviewedAt' in data) || data.reviewedAt is timestamp)
+        && (!('reviewedBy' in data) || isValidOptionalStr(data.reviewedBy, 200))
+        && (!('rejectionReason' in data) || isValidOptionalStr(data.rejectionReason, 500))
+        && (!('notificationStatus' in data) || data.notificationStatus in ['pending', 'sent', 'queued_retry', 'failed']);
+    }
+
+    function isValidOwnerConfig(data) {
+      return data.keys().hasAll(['ownerUid', 'ownerEmail', 'role', 'locked', 'provisionedAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerUid', 'ownerEmail', 'role', 'locked', 'provisionedAt', 'updatedAt'])
+        && isValidId(data.ownerUid)
+        && data.ownerEmail == 'business.atharvk@gmail.com'
+        && data.role == 'owner'
+        && data.locked == true
+        && data.provisionedAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminConfig(data) {
+      return data.keys().hasAll(['reviewPeriod', 'updatedAt'])
+        && data.keys().hasOnly(['reviewPeriod', 'updatedAt', 'updatedBy'])
+        && data.reviewPeriod in ['24h', '3d', '7d']
+        && data.updatedAt is timestamp
+        && (!('updatedBy' in data) || isValidOptionalStr(data.updatedBy, 200));
+    }
+
+    function isValidAnalyticsConfig(data) {
+      return data.keys().hasAll(['launchMode', 'showPublicVisitors', 'updatedAt'])
+        && data.keys().hasOnly(['launchMode', 'launchedAt', 'showPublicVisitors', 'updatedAt', 'updatedBy'])
+        && data.launchMode in ['development', 'production_launched']
+        && data.showPublicVisitors is bool
+        && (!('launchedAt' in data) || isValidOptionalStr(data.launchedAt, 64))
+        && data.updatedAt is timestamp
+        && (!('updatedBy' in data) || isValidOptionalStr(data.updatedBy, 200));
+    }
+
+    function isValidAnalyticsSummary(data) {
+      return data.keys().hasAll(['scope', 'totalPageViews', 'uniqueVisitors', 'totalSessions', 'updatedAt'])
+        && data.keys().hasOnly(['scope', 'totalPageViews', 'uniqueVisitors', 'totalSessions', 'updatedAt'])
+        && data.scope in ['production', 'preview']
+        && data.totalPageViews is number && data.totalPageViews >= 0
+        && data.uniqueVisitors is number && data.uniqueVisitors >= 0
+        && data.totalSessions is number && data.totalSessions >= 0
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUploadedGame(data) {
+      return data.keys().hasAll([
+          'gameId', 'title', 'description', 'filePath', 'fileSize',
+          'fileType', 'uploadStatus', 'securityScanStatus',
+          'publicationStatus', 'uploadedBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'gameId', 'title', 'description', 'category', 'version',
+          'developer', 'releaseDate', 'coverImage', 'screenshots',
+          'filePath', 'downloadFileName', 'fileSize', 'fileSizeFormatted',
+          'fileType', 'fileVersion', 'externalDownloadUrl', 'sha256',
+          'storageProvider', 'requirements', 'genre', 'playerMode',
+          'connectivity', 'ageRating', 'installationInstructions',
+          'additionalNotes', 'downloadCount', 'uploadStatus',
+          'securityScanStatus', 'securityScanDetails', 'publicationStatus',
+          'uploadedBy', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.gameId)
+        && isValidNonEmptyStr(data.title, 150)
+        && isValidNonEmptyStr(data.description, 5000)
+        && (!('category' in data) || isValidOptionalStr(data.category, 80))
+        && (!('version' in data) || isValidOptionalStr(data.version, 40))
+        && (!('developer' in data) || isValidOptionalStr(data.developer, 120))
+        && (!('releaseDate' in data) || isValidOptionalStr(data.releaseDate, 40))
+        && (!('coverImage' in data) || isValidOptionalStr(data.coverImage, 2000))
+        && (!('screenshots' in data) || (
+          data.screenshots is list
+          && data.screenshots.size() <= 10
+          && (data.screenshots.size() == 0 || data.screenshots[0] is string)
+        ))
+        && isValidOptionalStr(data.filePath, 500)
+        && (!('downloadFileName' in data) || isValidOptionalStr(data.downloadFileName, 200))
+        && data.fileSize is number && data.fileSize >= 0
+        && (!('fileSizeFormatted' in data) || isValidOptionalStr(data.fileSizeFormatted, 40))
+        && isValidOptionalStr(data.fileType, 20)
+        && (!('fileVersion' in data) || isValidOptionalStr(data.fileVersion, 40))
+        && (!('externalDownloadUrl' in data) || isValidOptionalStr(data.externalDownloadUrl, 2000))
+        && (!('sha256' in data) || isValidOptionalStr(data.sha256, 128))
+        && (!('storageProvider' in data) || data.storageProvider in ['firebase_storage', 'server_vault', 'external_only'])
+        && (!('requirements' in data) || data.requirements is map)
+        && (!('genre' in data) || isValidOptionalStr(data.genre, 80))
+        && (!('playerMode' in data) || data.playerMode in ['Single Player', 'Multiplayer', 'Both'])
+        && (!('connectivity' in data) || data.connectivity in ['Offline', 'Online', 'Both'])
+        && (!('ageRating' in data) || isValidOptionalStr(data.ageRating, 30))
+        && (!('installationInstructions' in data) || isValidOptionalStr(data.installationInstructions, 4000))
+        && (!('additionalNotes' in data) || isValidOptionalStr(data.additionalNotes, 2000))
+        && (!('downloadCount' in data) || (data.downloadCount is number && data.downloadCount >= 0))
+        && data.uploadStatus in ['uploading', 'scanning', 'completed', 'failed']
+        && data.securityScanStatus in ['pending', 'quarantined', 'passed', 'failed']
+        && (!('securityScanDetails' in data) || isValidOptionalStr(data.securityScanDetails, 500))
+        && data.publicationStatus in ['draft', 'published', 'unpublished']
+        && (data.publicationStatus != 'published' || (data.securityScanStatus == 'passed' && data.uploadStatus == 'completed'))
+        && isValidId(data.uploadedBy)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidInquiry(data) {
+      return data.keys().hasAll([
+          'inquiryId', 'name', 'email', 'subject', 'category',
+          'message', 'status', 'notificationStatus', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'inquiryId', 'name', 'email', 'subject', 'category',
+          'message', 'status', 'notificationStatus', 'notificationError', 'createdAt'
+        ])
+        && isValidId(data.inquiryId)
+        && isValidNonEmptyStr(data.name, 120)
+        && isValidEmailStr(data.email)
+        && isValidNonEmptyStr(data.subject, 200)
+        && data.category in ['General Inquiry', 'Business Collaboration', 'Project Discussion', 'Technical Support', 'Other']
+        && isValidNonEmptyStr(data.message, 5000)
+        && data.status in ['unread', 'read', 'replied']
+        && data.notificationStatus in ['pending', 'sent', 'queued_retry', 'failed']
+        && (!('notificationError' in data) || isValidOptionalStr(data.notificationError, 500))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['logId', 'actorUid', 'action', 'targetId', 'details', 'timestamp'])
+        && data.keys().hasOnly(['logId', 'actorUid', 'actorEmail', 'action', 'targetId', 'details', 'timestamp'])
+        && isValidId(data.logId)
+        && isValidId(data.actorUid)
+        && (!('actorEmail' in data) || isValidOptionalStr(data.actorEmail, 200))
+        && isValidNonEmptyStr(data.action, 100)
+        && isValidNonEmptyStr(data.targetId, 150)
+        && isValidNonEmptyStr(data.details, 1000)
+        && data.timestamp is timestamp;
+    }
+
+    function isValidSiteContent(data) {
+      return data.keys().hasAll(['sectionId', 'updatedAt', 'updatedBy'])
+        && data.keys().hasOnly(['sectionId', 'items', 'data', 'updatedAt', 'updatedBy'])
+        && data.sectionId in [
+          'profile', 'stats', 'links', 'photos', 'projects',
+          'videos', 'downloads', 'favorites', 'blogs', 'timeline', 'arcadeGames'
+        ]
+        && (!('items' in data) || (
+          data.items is list
+          && data.items.size() <= 500
+          && (data.items.size() == 0 || data.items[0] is map)
+        ))
+        && (!('data' in data) || data.data is map)
+        && data.updatedAt is timestamp
+        && isValidId(data.updatedBy);
+    }
+
+    function sectionKeyForContent(sectionId) {
+      return sectionId == 'profile' ? 'home'
+        : sectionId == 'stats' ? 'about'
+        : sectionId == 'links' ? 'links'
+        : sectionId == 'photos' ? 'gallery'
+        : sectionId == 'projects' ? 'projects'
+        : sectionId == 'videos' ? 'links'
+        : sectionId == 'downloads' ? 'library'
+        : sectionId == 'favorites' ? 'library'
+        : sectionId == 'blogs' ? 'blogs'
+        : sectionId == 'timeline' ? 'journey'
+        : 'gamingZone';
+    }
+
+    // === COLLECTION RULES ===
+
+    match /adminUsers/{uid} {
+      allow get: if isValidId(uid) && (isOwner() || (isVerifiedUser() && request.auth.uid == uid));
+      allow list: if isOwner();
+
+      // Owner can bootstrap self or create approved admins; non-owners cannot create adminUsers
+      allow create: if isValidId(uid)
+        && isOwner()
+        && isValidAdminUser(incoming())
+        && incoming().uid == uid
+        && incoming().createdAt == request.time
+        && (uid == request.auth.uid ? incoming().role == 'owner' : incoming().role in ['full_admin', 'limited_admin']);
+
+      // Owner can update admins (cannot demote/suspend/revoke Owner); active admin can update only their own lastLoginAt
+      allow update: if isValidId(uid)
+        && isValidAdminUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && (
+          (
+            isOwner()
+            && (
+              existing().role != 'owner' ||
+              (incoming().role == 'owner' && incoming().status == 'active')
+            )
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'role', 'status', 'permissions', 'approvedAt', 'approvedBy', 'lastLoginAt'
+            ])
+          )
+          ||
+          (
+            isVerifiedUser()
+            && request.auth.uid == uid
+            && existing().status == 'active'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['lastLoginAt'])
+            && incoming().lastLoginAt == request.time
+          )
+        );
+
+      // Owner can remove non-owner admins only
+      allow delete: if isValidId(uid) && isOwner() && existing().role != 'owner';
+    }
+
+    match /adminRequests/{requestId} {
+      allow get: if isValidId(requestId) && (isOwner() || (isVerifiedUser() && existing().uid == request.auth.uid));
+      allow list: if isOwner() || (isVerifiedUser() && resource.data.uid == request.auth.uid);
+
+      // Verified non-owner user creates their own pending request
+      allow create: if isValidId(requestId)
+        && isVerifiedUser()
+        && isValidAdminRequest(incoming())
+        && incoming().requestId == requestId
+        && incoming().uid == request.auth.uid
+        && incoming().email.lower() == request.auth.token.email.lower()
+        && incoming().email.lower() != 'business.atharvk@gmail.com'
+        && incoming().verified == true
+        && incoming().status == 'pending'
+        && incoming().requestedAt == request.time
+        && incoming().expiresAt > request.time;
+
+      // Only Owner can approve, reject, or expire pending requests (terminal state lock)
+      allow update: if isValidId(requestId)
+        && isOwner()
+        && isValidAdminRequest(incoming())
+        && incoming().requestId == existing().requestId
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().requestedAt == existing().requestedAt
+        && existing().status == 'pending'
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'assignedRole', 'assignedPermissions',
+          'reviewedAt', 'reviewedBy', 'rejectionReason', 'notificationStatus'
+        ]);
+
+      allow delete: if isValidId(requestId) && isOwner();
+    }
+
+    match /adminConfig/{configId} {
+      allow get: if isValidId(configId) && (
+        (configId == 'owner' && isVerifiedUser() && (
+          request.auth.token.email.lower() == 'business.atharvk@gmail.com' ||
+          existing().ownerUid == request.auth.uid
+        )) ||
+        (configId != 'owner' && isVerifiedUser())
+      );
+      allow list: if isOwner();
+      allow create: if isValidId(configId) && (
+        (
+          configId == 'owner'
+          && !exists(ownerConfigPath())
+          && isVerifiedUser()
+          && request.auth.token.email.lower() == 'business.atharvk@gmail.com'
+          && isValidOwnerConfig(incoming())
+          && incoming().ownerUid == request.auth.uid
+          && incoming().provisionedAt == request.time
+          && incoming().updatedAt == request.time
+        ) ||
+        (
+          configId == 'analytics'
+          && isOwner()
+          && isValidAnalyticsConfig(incoming())
+          && incoming().updatedAt == request.time
+        ) ||
+        (
+          configId != 'owner'
+          && configId != 'analytics'
+          && isOwner()
+          && isValidAdminConfig(incoming())
+          && incoming().updatedAt == request.time
+        )
+      );
+      allow update: if isValidId(configId)
+        && configId != 'owner'
+        && isOwner()
+        && incoming().updatedAt == request.time
+        && (
+          (configId == 'analytics' && isValidAnalyticsConfig(incoming()))
+          || (configId != 'analytics' && isValidAdminConfig(incoming()))
+        );
+      allow delete: if false;
+    }
+
+    match /analytics/{docId} {
+      allow get, list: if isOwner() || isActiveAdmin();
+      allow create, update: if isValidId(docId)
+        && isOwner()
+        && isValidAnalyticsSummary(incoming())
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /games/{gameId} {
+      allow get: if isValidId(gameId) && (
+        (existing().publicationStatus == 'published' && existing().securityScanStatus == 'passed')
+        || hasSectionPerm('gamingZone', 'view')
+      );
+      allow list: if (resource.data.publicationStatus == 'published' && resource.data.securityScanStatus == 'passed')
+        || hasSectionPerm('gamingZone', 'view');
+
+      allow create: if isValidId(gameId)
+        && hasSectionPerm('gamingZone', 'create')
+        && isValidUploadedGame(incoming())
+        && incoming().gameId == gameId
+        && incoming().uploadedBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(gameId)
+        && isValidUploadedGame(incoming())
+        && incoming().gameId == existing().gameId
+        && incoming().uploadedBy == existing().uploadedBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && hasSectionPerm('gamingZone', 'edit')
+        && (incoming().publicationStatus == existing().publicationStatus || hasSectionPerm('gamingZone', 'publish'))
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'description', 'category', 'version', 'developer',
+          'releaseDate', 'coverImage', 'screenshots', 'filePath',
+          'downloadFileName', 'fileSize', 'fileSizeFormatted', 'fileType',
+          'fileVersion', 'externalDownloadUrl', 'sha256', 'storageProvider',
+          'requirements', 'genre', 'playerMode', 'connectivity', 'ageRating',
+          'installationInstructions', 'additionalNotes', 'uploadStatus',
+          'securityScanStatus', 'securityScanDetails', 'publicationStatus',
+          'downloadCount', 'updatedAt'
+        ]);
+
+      allow delete: if isValidId(gameId) && hasSectionPerm('gamingZone', 'delete');
+    }
+
+    match /inquiries/{inquiryId} {
+      allow get: if isValidId(inquiryId) && hasSectionPerm('directInquiry', 'view');
+      allow list: if hasSectionPerm('directInquiry', 'view');
+
+      allow create: if isValidId(inquiryId)
+        && isValidInquiry(incoming())
+        && incoming().inquiryId == inquiryId
+        && incoming().status == 'unread'
+        && incoming().createdAt == request.time;
+
+      allow update: if isValidId(inquiryId)
+        && hasSectionPerm('directInquiry', 'edit')
+        && isValidInquiry(incoming())
+        && incoming().inquiryId == existing().inquiryId
+        && incoming().name == existing().name
+        && incoming().email == existing().email
+        && incoming().subject == existing().subject
+        && incoming().category == existing().category
+        && incoming().message == existing().message
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notificationStatus', 'notificationError']);
+
+      allow delete: if isValidId(inquiryId) && hasSectionPerm('directInquiry', 'delete');
+    }
+
+    match /adminAuditLogs/{logId} {
+      allow get, list: if isOwner();
+      allow create: if isValidId(logId)
+        && (isOwner() || isActiveAdmin())
+        && isValidAuditLog(incoming())
+        && incoming().logId == logId
+        && incoming().actorUid == request.auth.uid
+        && incoming().timestamp == request.time;
+      allow update, delete: if false;
+    }
+
+    match /siteContent/{sectionId} {
+      allow get, list: if true;
+      allow create: if isValidId(sectionId)
+        && isValidSiteContent(incoming())
+        && incoming().sectionId == sectionId
+        && incoming().updatedBy == request.auth.uid
+        && incoming().updatedAt == request.time
+        && (
+          hasSectionPerm(sectionKeyForContent(sectionId), 'create') ||
+          (sectionId == 'profile' && (hasSectionPerm('home', 'create') || hasSectionPerm('about', 'create') || hasSectionPerm('contact', 'create')))
+        );
+      allow update: if isValidId(sectionId)
+        && isValidSiteContent(incoming())
+        && incoming().sectionId == existing().sectionId
+        && incoming().updatedBy == request.auth.uid
+        && incoming().updatedAt == request.time
+        && (
+          hasSectionPerm(sectionKeyForContent(sectionId), 'edit') ||
+          (sectionId == 'profile' && (hasSectionPerm('home', 'edit') || hasSectionPerm('about', 'edit') || hasSectionPerm('contact', 'edit')))
+        )
+        && incoming().diff(existing()).affectedKeys().hasOnly(['items', 'data', 'updatedAt', 'updatedBy']);
+      allow delete: if isValidId(sectionId) && hasSectionPerm(sectionKeyForContent(sectionId), 'delete');
+    }
+  }
+}
